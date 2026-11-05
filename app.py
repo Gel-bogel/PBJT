@@ -109,8 +109,8 @@ for idx, ulp in enumerate(list_ulp, 1):
     df1 = find_file_by_ulp(uploaded_files_hal1, ulp)
     df2 = find_file_by_ulp(uploaded_files_hal2, ulp)
 
-    row_m = {"NO": str(idx), "NAMA ULP": ulp}
-    row_ds = {"NO": str(idx), "NAMA ULP": ulp}
+    row_m = {"NO": idx, "NAMA ULP": ulp}
+    row_ds = {"NO": idx, "NAMA ULP": ulp}
 
     d1_m = extract_ppj1_pemda_new(df1, "KOTA MEDAN") if df1 is not None else {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
     d1_ds = extract_ppj1_pemda_new(df1, "DELI SERDANG") if df1 is not None else {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
@@ -124,7 +124,7 @@ for idx, ulp in enumerate(list_ulp, 1):
     row_ds.update(d1_ds)
     row_ds.update(d2_ds)
 
-    row_tot = {"NO": str(idx), "NAMA ULP": ulp}
+    row_tot = {"NO": idx, "NAMA ULP": ulp}
     for key in ["k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13"]:
         row_tot[key] = row_m.get(key, 0) + row_ds.get(key, 0)
 
@@ -137,96 +137,122 @@ df_m = pd.DataFrame(data_medan)
 df_ds = pd.DataFrame(data_deliserdang)
 
 
-def format_dataframe_display(df):
+# ----------------------------------------------------
+# FUNGSI RENDER TABEL HTML ASLI (PERSIS SEPERTI GAMBAR)
+# ----------------------------------------------------
+def render_custom_html_table(df):
     if df.empty:
-        return df
+        return ""
 
-    # Hitung jumlah total sebelum dikonversi ke string
-    tot_row = {
-        "NO": "",
-        "NAMA ULP": "JUMLAH TOTAL UP3 MEDAN UTARA",
-    }
-    for col in ["k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13"]:
-        tot_row[col] = df[col].sum() if col in df.columns else 0
+    headers = [
+        ("1", "NO"),
+        ("2", "NAMA ULP"),
+        ("3", "LUNAS ONLINE (KODE GERAK 22)"),
+        ("4", "LUNAS OFFLINE (KODE GERAK 21)"),
+        ("5", "BEBAN KANTOR (KODE GERAK 24)"),
+        ("6", "LUNAS TERPUSAT (KODE GERAK 25)"),
+        ("7", "RESTITUSI"),
+        ("8", "NON TAGLIS ONLINE"),
+        ("9", "PRABAYAR"),
+        ("10", "TOTAL PELUNASAN")
+    ]
 
-    df_out = pd.concat([df, pd.DataFrame([tot_row])], ignore_index=True)
+    keys = ["k3", "k4", "k5", "k6", "k7", "k8", "k9", "k13"]
 
-    # Format angka menjadi "Rp 1.000.000" agar RATA KIRI
-    for col in ["k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13"]:
-        if col in df_out.columns:
-            df_out[col] = df_out[col].apply(lambda x: f"Rp {int(x):,}".replace(",", "."))
-
-    df_out = df_out.rename(columns={
-        "k3": "LUNAS ONLINE (KODE GERAK 22)",
-        "k4": "LUNAS OFFLINE (KODE GERAK 21)",
-        "k5": "BEBAN KANTOR (KODE GERAK 24)",
-        "k6": "LUNAS TERPUSAT (KODE GERAK 25)",
-        "k7": "RESTITUSI",
-        "k8": "NON TAGLIS ONLINE",
-        "k9": "PRABAYAR",
-        "k10": "NON TAGLIS OFFLINE",
-        "k11": "NOTA BUKU",
-        "k12": "LAIN-LAIN",
-        "k13": "TOTAL PELUNASAN"
-    })
-    return df_out
-
-
-# Fungsi Styling Warna Header Biru & Kontras Baris Total
-def apply_custom_table_style(df):
-    num_cols = [c for c in df.columns if c not in ["NO", "NAMA ULP"]]
-    
-    styler = df.style.set_table_styles([
-        {
-            'selector': 'th',
-            'props': [
-                ('background-color', '#1F4E79'),  # Header Biru Tua
-                ('color', '#FFFFFF'),              # Teks Putih
-                ('font-weight', 'bold'),
-                ('text-align', 'center'),
-                ('border', '1px solid #102A43')
-            ]
-        },
-        {
-            'selector': 'td',
-            'props': [
-                ('text-align', 'left'),            # Teks & Rp Rata Kiri
-                ('padding', '8px')
-            ]
+    # Inisialisasi HTML dengan CSS Kustom
+    html = """
+    <style>
+        .custom-table-container {
+            width: 100%;
+            overflow-x: auto;
+            margin-bottom: 25px;
         }
-    ])
+        .custom-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: sans-serif;
+            font-size: 13px;
+            background-color: #FFFFFF;
+            color: #000000;
+        }
+        .custom-table th {
+            background-color: #9CD2EC;
+            color: #000000;
+            border: 1px solid #73A9C2;
+            padding: 8px 5px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .custom-table td {
+            border: 1px solid #B0C4DE;
+            padding: 6px 8px;
+            vertical-align: middle;
+        }
+        .num-col {
+            display: flex;
+            justify-content: space-between;
+        }
+        .total-row {
+            background-color: #62B8DF !important;
+            font-weight: bold;
+        }
+    </style>
+    <div class="custom-table-container">
+    <table class="custom-table">
+        <thead>
+            <tr>
+    """
 
-    # Highlight baris Jumlah Total dengan Warna Kontras Biru Cerah/Kuning Emas
-    def highlight_total(row):
-        if row['NAMA ULP'] == 'JUMLAH TOTAL UP3 MEDAN UTARA':
-            return ['background-color: #2E5B88; color: #FFD700; font-weight: bold;'] * len(row)
-        return [''] * len(row)
+    # Baris Nomor Kolom (1, 2, 3, 4, dst.)
+    for num, _ in headers:
+        html += f"<th>{num}</th>"
+    html += "</tr><tr>"
 
-    styler = styler.apply(highlight_total, axis=1)
-    return styler
+    # Baris Nama Header
+    for _, title in headers:
+        html += f"<th>{title}</th>"
+    html += "</tr></thead><tbody>"
+
+    # Isian Data Baris ULP
+    totals = {k: df[k].sum() for k in keys if k in df.columns}
+
+    for _, row in df.iterrows():
+        html += f"<tr><td style='text-align:center;'>{row['NO']}</td><td>{row['NAMA ULP']}</td>"
+        for k in keys:
+            val = row.get(k, 0)
+            formatted_val = f"{int(val):,}".replace(",", ".")
+            html += f"<td><div class='num-col'><span>Rp</span><span>{formatted_val}</span></div></td>"
+        html += "</tr>"
+
+    # Baris Jumlah Total UP3 Medan Utara
+    html += f"<tr class='total-row'><td style='text-align:center;'></td><td>JUMLAH TOTAL UP3 MEDAN UTARA</td>"
+    for k in keys:
+        tot_val = totals.get(k, 0)
+        formatted_tot = f"{int(tot_val):,}".replace(",", ".")
+        html += f"<td><div class='num-col'><span>Rp</span><span>{formatted_tot}</span></div></td>"
+    html += "</tr>"
+
+    html += "</tbody></table></div>"
+    return html
 
 
 # ----------------------------------------------------
-# TAMPILAN TABEL DASHBOARD STREAMLIT
+# TAMPILAN DASHBOARD STREAMLIT
 # ----------------------------------------------------
-df_tot_display = format_dataframe_display(df_tot)
-df_m_display = format_dataframe_display(df_m)
-df_ds_display = format_dataframe_display(df_ds)
-
 st.subheader("🏢 TABEL 1. TOTAL KESELURUHAN (PEMDA MEDAN + DELI SERDANG)")
-st.dataframe(apply_custom_table_style(df_tot_display), use_container_width=True, hide_index=True)
+st.markdown(render_custom_html_table(df_tot), unsafe_allow_html=True)
 
 st.subheader("🏛️ TABEL 2. PEMDA KOTA MEDAN")
-st.dataframe(apply_custom_table_style(df_m_display), use_container_width=True, hide_index=True)
+st.markdown(render_custom_html_table(df_m), unsafe_allow_html=True)
 
 st.subheader("🌾 TABEL 3. PEMDA KABUPATEN DELI SERDANG")
-st.dataframe(apply_custom_table_style(df_ds_display), use_container_width=True, hide_index=True)
+st.markdown(render_custom_html_table(df_ds), unsafe_allow_html=True)
 
 
 # ----------------------------------------------------
 # EXPORT KE EXCEL DENGAN OPENPYXL STYLING
 # ----------------------------------------------------
-def export_to_excel(df_total_disp, df_medan_disp, df_ds_disp):
+def export_to_excel(df_tot, df_m, df_ds):
     output = io.BytesIO()
     wb = Workbook()
 
@@ -235,46 +261,22 @@ def export_to_excel(df_total_disp, df_medan_disp, df_ds_disp):
     ws2 = wb.create_sheet(title="Kota Medan")
     ws3 = wb.create_sheet(title="Deli Serdang")
 
-    sheets_data = [
-        (ws1, "LAPORAN KONSOLIDASI TOTAL UP3 MEDAN UTARA", df_total_disp),
-        (ws2, "LAPORAN REALISASI PEMDA KOTA MEDAN", df_medan_disp),
-        (ws3, "LAPORAN REALISASI PEMDA KABUPATEN DELI SERDANG", df_ds_disp),
-    ]
+    sheets = [(ws1, df_tot), (ws2, df_m), (ws3, df_ds)]
 
-    header_fill = PatternFill(start_color="1F4E79", end_color="1F4E79", fill_type="solid")
-    header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
-    thin_border = Border(
-        left=Side(style='thin', color='000000'),
-        right=Side(style='thin', color='000000'),
-        top=Side(style='thin', color='000000'),
-        bottom=Side(style='thin', color='000000')
-    )
+    for ws, df_curr in sheets:
+        ws.append(["NO", "NAMA ULP", "LUNAS ONLINE", "LUNAS OFFLINE", "BEBAN KANTOR", "LUNAS TERPUSAT", "RESTITUSI", "NON TAGLIS ONLINE", "PRABAYAR", "TOTAL PELUNASAN"])
+        keys = ["k3", "k4", "k5", "k6", "k7", "k8", "k9", "k13"]
+        
+        for _, r in df_curr.iterrows():
+            ws.append([r["NO"], r["NAMA ULP"]] + [r.get(k, 0) for k in keys])
+            
+        tot_row = ["", "JUMLAH TOTAL UP3 MEDAN UTARA"] + [df_curr[k].sum() for k in keys]
+        ws.append(tot_row)
 
-    for ws, title, df_data in sheets_data:
-        ws.append([title])
-        ws.append([])
-
-        headers = list(df_data.columns)
-        ws.append(headers)
-
-        header_row_idx = 3
-        for col_num in range(1, len(headers) + 1):
-            cell = ws.cell(row=header_row_idx, column=col_num)
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-
-        for row in df_data.itertuples(index=False):
-            ws.append(list(row))
-
-        for row in ws.iter_rows(min_row=3, max_row=ws.max_row, min_col=1, max_col=len(headers)):
+        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=3, max_col=10):
             for cell in row:
-                cell.border = thin_border
-
-        for col in ws.columns:
-            max_len = max(len(str(cell.value or '')) for cell in col)
-            col_letter = get_column_letter(col[0].column)
-            ws.column_dimensions[col_letter].width = max(max_len + 3, 14)
+                if isinstance(cell.value, (int, float)):
+                    cell.number_format = '#,##0'
 
     wb.save(output)
     output.seek(0)
@@ -282,7 +284,7 @@ def export_to_excel(df_total_disp, df_medan_disp, df_ds_disp):
 
 
 st.markdown("---")
-excel_file = export_to_excel(df_tot_display, df_m_display, df_ds_display)
+excel_file = export_to_excel(df_tot, df_m, df_ds)
 
 st.download_button(
     label="📥 Unduh Laporan Consolidated Excel (.xlsx)",
