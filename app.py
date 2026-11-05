@@ -10,16 +10,16 @@ from openpyxl.utils import get_column_letter
 st.set_page_config(page_title="Laporan Realisasi PPJ / PBJT-TL", layout="wide")
 
 st.title("⚡ Laporan Realisasi Hasil Pemungutan PPJ / PBJT-TL")
-st.subheader("PT PLN (PERSERO) UP3 MEDAN UTARA")
+st.subheader("PT PLN (PERSERO) UP3 MEDAN UTARA (12128)")
 st.caption("Konsolidasi 5 ULP (Format Baru AP2T)")
 
 # ----------------------------------------------------
-# FUNGSI EKSTRAKSI DATA FORMAT BARU AP2T
+# FUNGSI EKSTRAKSI DATA (HANYA BARIS TOTAL/JUMLAH)
 # ----------------------------------------------------
 
 def extract_ppj1_pemda_new(df1, kota):
     """
-    Ekstraksi Halaman 1 (PPJ 1) - Kolom Berwarna Kuning:
+    Ekstraksi Halaman 1 (PPJ 1) - HANYA Mengambil Baris TOTAL (JUMLAH S, JUMLAH R, dll):
     - k3 (Lunas Online / DPH22)  : Indeks kolom 17 (R)
     - k4 (Lunas Offline / DPH21) : Indeks kolom 13 (N)
     - k5 (Beban Kantor / DPH24)  : Indeks kolom 25 (Z)
@@ -29,8 +29,11 @@ def extract_ppj1_pemda_new(df1, kota):
     if df1 is None or df1.empty:
         return default_res
 
-    mask = df1.iloc[:, 1].astype(str).str.contains(kota, case=False, na=False)
-    df_pemda = df1[mask]
+    # Filter Pemda DAN HANYA mengambil baris yang mengandung 'JUMLAH'
+    mask_pemda = df1.iloc[:, 1].astype(str).str.contains(kota, case=False, na=False)
+    mask_jumlah = df1.iloc[:, 2].astype(str).str.contains("JUMLAH", case=False, na=False)
+    
+    df_pemda = df1[mask_pemda & mask_jumlah]
 
     if df_pemda.empty:
         return default_res
@@ -50,7 +53,7 @@ def extract_ppj1_pemda_new(df1, kota):
 
 def extract_ppj2_pemda_new(df2, kota):
     """
-    Ekstraksi Halaman 2 (PPJ 2):
+    Ekstraksi Halaman 2 (PPJ 2) - HANYA Mengambil Baris TOTAL (JUMLAH S, JUMLAH R, dll):
     - k7 (RESTITUSI - HASIL PENJUMLAHAN 3 KOLOM ORANYE):
         * Restitusi Taglis    : Indeks kolom 12 (M)
         * Restitusi Non Taglis: Indeks kolom 16 (Q)
@@ -70,20 +73,23 @@ def extract_ppj2_pemda_new(df2, kota):
     if df2 is None or df2.empty:
         return default_res
 
-    mask = df2.iloc[:, 1].astype(str).str.contains(kota, case=False, na=False)
-    df_pemda = df2[mask]
+    # Filter Pemda DAN HANYA mengambil baris yang mengandung 'JUMLAH'
+    mask_pemda = df2.iloc[:, 1].astype(str).str.contains(kota, case=False, na=False)
+    mask_jumlah = df2.iloc[:, 2].astype(str).str.contains("JUMLAH", case=False, na=False)
+
+    df_pemda = df2[mask_pemda & mask_jumlah]
 
     if df_pemda.empty:
         return default_res
 
-    # 1. PENJUMLAHAN 3 KOLOM ORANYE UNTUK RESTITUSI (k7)
+    # 1. Penjumlahan 3 kolom Oranye untuk Restitusi (k7)
     res_taglis    = pd.to_numeric(df_pemda.iloc[:, 12], errors='coerce').sum() if df2.shape[1] > 12 else 0
     res_nontaglis = pd.to_numeric(df_pemda.iloc[:, 16], errors='coerce').sum() if df2.shape[1] > 16 else 0
     res_prabayar  = pd.to_numeric(df_pemda.iloc[:, 20], errors='coerce').sum() if df2.shape[1] > 20 else 0
     
     total_restitusi = res_taglis + res_nontaglis + res_prabayar
 
-    # 2. EKSTRAKSI KOLOM KUNING LAINNYA
+    # 2. Ekstraksi kolom Kuning lainnya
     k8_val  = pd.to_numeric(df_pemda.iloc[:, 24], errors='coerce').sum() if df2.shape[1] > 24 else 0
     k10_val = pd.to_numeric(df_pemda.iloc[:, 28], errors='coerce').sum() if df2.shape[1] > 28 else 0
     k11_val = pd.to_numeric(df_pemda.iloc[:, 32], errors='coerce').sum() if df2.shape[1] > 32 else 0
@@ -112,7 +118,14 @@ def extract_ppj2_pemda_new(df2, kota):
 # ----------------------------------------------------
 st.sidebar.header("📁 Unggah Berkas AP2T (Format Baru)")
 
-list_ulp = ["ULP BELAWAN", "ULP DENAI", "ULP HELVETIA", "ULP LABUHAN", "ULP MEDAN TIMUR"]
+# URUTAN ULP BERDASARKAN ID ULP (12801 S.D 12805)
+list_ulp = [
+    "ULP MEDAN TIMUR", # 12801
+    "ULP BELAWAN",     # 12802
+    "ULP HELVETIA",    # 12803
+    "ULP LABUHAN",     # 12804
+    "ULP DENAI"        # 12805
+]
 
 uploaded_files_hal1 = st.sidebar.file_uploader(
     "1. Berkas Halaman 1 (PPJ 1)", type=["xlsx", "xls"], accept_multiple_files=True
@@ -175,7 +188,7 @@ df_ds = pd.DataFrame(data_deliserdang)
 
 
 # ----------------------------------------------------
-# FUNGSI RENDER TABEL HTML DENGAN UKURAN PROPORSIONAL
+# FUNGSI RENDER TABEL HTML DENGAN LEBAR BESAR KE SAMPING
 # ----------------------------------------------------
 def render_custom_html_table(df):
     if df.empty:
