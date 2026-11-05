@@ -18,19 +18,10 @@ st.caption("Konsolidasi 5 ULP (Format Baru AP2T)")
 # ----------------------------------------------------
 
 def extract_ppj1_pemda_new(df1, kota):
-    """
-    Ekstraksi data Halaman 1 (PPJ 1) Format Baru AP2T.
-    Target Kolom PBJT:
-    - k3 (Lunas Online / DPH22)  : Indeks kolom 17
-    - k4 (Lunas Offline / DPH21) : Indeks kolom 13
-    - k5 (Beban Kantor / DPH24)  : Indeks kolom 25
-    - k6 (Lunas Terpusat / DPH25): Indeks kolom 29
-    """
     default_res = {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
     if df1 is None or df1.empty:
         return default_res
 
-    # Filter berdasarkan nama Pemda/Kota pada kolom indeks 1
     mask = df1.iloc[:, 1].astype(str).str.contains(kota, case=False, na=False)
     df_pemda = df1[mask]
 
@@ -51,14 +42,6 @@ def extract_ppj1_pemda_new(df1, kota):
 
 
 def extract_ppj2_pemda_new(df2, kota):
-    """
-    Ekstraksi data Halaman 2 (PPJ 2) Format Baru AP2T.
-    Target Kolom PBJT:
-    - k7  (Restitusi Taglis) : Indeks kolom 12
-    - k8  (Non Taglis Online): Indeks kolom 24
-    - k9  (Prabayar / Token) : Indeks kolom 36
-    - k13 (Total Pelunasan)  : Indeks kolom 47
-    """
     default_res = {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0}
     if df2 is None or df2.empty:
         return default_res
@@ -116,7 +99,7 @@ def find_file_by_ulp(file_list, ulp_name):
 
 
 # ----------------------------------------------------
-# PEMROSESAN DATA (INISIALISASI BEBAS NameError)
+# PEMROSESAN DATA
 # ----------------------------------------------------
 data_total = []
 data_medan = []
@@ -126,26 +109,21 @@ for idx, ulp in enumerate(list_ulp, 1):
     df1 = find_file_by_ulp(uploaded_files_hal1, ulp)
     df2 = find_file_by_ulp(uploaded_files_hal2, ulp)
 
-    # Inisialisasi dictionary row_m & row_ds secara eksplisit untuk mencegah NameError
     row_m = {"NO": idx, "NAMA ULP": ulp}
     row_ds = {"NO": idx, "NAMA ULP": ulp}
 
-    # Ekstraksi Data Halaman 1
     d1_m = extract_ppj1_pemda_new(df1, "KOTA MEDAN") if df1 is not None else {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
     d1_ds = extract_ppj1_pemda_new(df1, "DELI SERDANG") if df1 is not None else {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
 
-    # Ekstraksi Data Halaman 2
     d2_m = extract_ppj2_pemda_new(df2, "KOTA MEDAN") if df2 is not None else {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0}
     d2_ds = extract_ppj2_pemda_new(df2, "DELI SERDANG") if df2 is not None else {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0}
 
-    # Update dictionary masing-masing Pemda
     row_m.update(d1_m)
     row_m.update(d2_m)
 
     row_ds.update(d1_ds)
     row_ds.update(d2_ds)
 
-    # Gabungan Total Keseluruhan (Medan + Deli Serdang)
     row_tot = {"NO": idx, "NAMA ULP": ulp}
     for key in ["k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13"]:
         row_tot[key] = row_m.get(key, 0) + row_ds.get(key, 0)
@@ -154,7 +132,6 @@ for idx, ulp in enumerate(list_ulp, 1):
     data_medan.append(row_m)
     data_deliserdang.append(row_ds)
 
-# Konversi ke DataFrames
 df_tot = pd.DataFrame(data_total)
 df_m = pd.DataFrame(data_medan)
 df_ds = pd.DataFrame(data_deliserdang)
@@ -164,7 +141,6 @@ def format_dataframe(df):
     if df.empty:
         return df
 
-    # Hitung baris jumlah total UP3
     tot_row = {
         "NO": "",
         "NAMA ULP": "JUMLAH TOTAL UP3 MEDAN UTARA",
@@ -197,14 +173,35 @@ df_tot_display = format_dataframe(df_tot)
 df_m_display = format_dataframe(df_m)
 df_ds_display = format_dataframe(df_ds)
 
+# Konfigurasi Tampilan Kolom Angka (Rp)
+column_config = {
+    col: st.column_config.NumberColumn(format="Rp %d") 
+    for col in df_tot_display.columns if col not in ["NO", "NAMA ULP"]
+}
+
 st.subheader("🏢 TABEL 1. TOTAL KESELURUHAN (PEMDA MEDAN + DELI SERDANG)")
-st.dataframe(df_tot_display, use_container_width=True)
+st.dataframe(
+    df_tot_display, 
+    use_container_width=True, 
+    hide_index=True, 
+    column_config=column_config
+)
 
 st.subheader("🏛️ TABEL 2. PEMDA KOTA MEDAN")
-st.dataframe(df_m_display, use_container_width=True)
+st.dataframe(
+    df_m_display, 
+    use_container_width=True, 
+    hide_index=True, 
+    column_config=column_config
+)
 
 st.subheader("🌾 TABEL 3. PEMDA KABUPATEN DELI SERDANG")
-st.dataframe(df_ds_display, use_container_width=True)
+st.dataframe(
+    df_ds_display, 
+    use_container_width=True, 
+    hide_index=True, 
+    column_config=column_config
+)
 
 
 # ----------------------------------------------------
@@ -214,14 +211,9 @@ def export_to_excel(df_total_disp, df_medan_disp, df_ds_disp):
     output = io.BytesIO()
     wb = Workbook()
 
-    # Sheet 1: Konsolidasi Total
     ws1 = wb.active
     ws1.title = "Konsolidasi Total"
-
-    # Sheet 2: Kota Medan
     ws2 = wb.create_sheet(title="Kota Medan")
-
-    # Sheet 3: Deli Serdang
     ws3 = wb.create_sheet(title="Deli Serdang")
 
     sheets_data = [
@@ -241,9 +233,8 @@ def export_to_excel(df_total_disp, df_medan_disp, df_ds_disp):
 
     for ws, title, df_data in sheets_data:
         ws.append([title])
-        ws.append([]) # Baris kosong
+        ws.append([])
 
-        # Header Tabel
         headers = list(df_data.columns)
         ws.append(headers)
 
@@ -254,18 +245,15 @@ def export_to_excel(df_total_disp, df_medan_disp, df_ds_disp):
             cell.font = header_font
             cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-        # Isi Data
         for row in df_data.itertuples(index=False):
             ws.append(list(row))
 
-        # Format Border dan Ribuan Rupiah
         for row in ws.iter_rows(min_row=3, max_row=ws.max_row, min_col=1, max_col=len(headers)):
             for cell in row:
                 cell.border = thin_border
                 if isinstance(cell.value, (int, float)):
                     cell.number_format = '#,##0'
 
-        # Auto-fit Lebar Kolom
         for col in ws.columns:
             max_len = max(len(str(cell.value or '')) for cell in col)
             col_letter = get_column_letter(col[0].column)
