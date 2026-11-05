@@ -109,8 +109,8 @@ for idx, ulp in enumerate(list_ulp, 1):
     df1 = find_file_by_ulp(uploaded_files_hal1, ulp)
     df2 = find_file_by_ulp(uploaded_files_hal2, ulp)
 
-    row_m = {"NO": idx, "NAMA ULP": ulp}
-    row_ds = {"NO": idx, "NAMA ULP": ulp}
+    row_m = {"NO": str(idx), "NAMA ULP": ulp}
+    row_ds = {"NO": str(idx), "NAMA ULP": ulp}
 
     d1_m = extract_ppj1_pemda_new(df1, "KOTA MEDAN") if df1 is not None else {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
     d1_ds = extract_ppj1_pemda_new(df1, "DELI SERDANG") if df1 is not None else {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
@@ -124,7 +124,7 @@ for idx, ulp in enumerate(list_ulp, 1):
     row_ds.update(d1_ds)
     row_ds.update(d2_ds)
 
-    row_tot = {"NO": idx, "NAMA ULP": ulp}
+    row_tot = {"NO": str(idx), "NAMA ULP": ulp}
     for key in ["k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13"]:
         row_tot[key] = row_m.get(key, 0) + row_ds.get(key, 0)
 
@@ -137,10 +137,11 @@ df_m = pd.DataFrame(data_medan)
 df_ds = pd.DataFrame(data_deliserdang)
 
 
-def format_dataframe(df):
+def format_dataframe_display(df):
     if df.empty:
         return df
 
+    # Hitung jumlah total sebelum dikonversi ke string
     tot_row = {
         "NO": "",
         "NAMA ULP": "JUMLAH TOTAL UP3 MEDAN UTARA",
@@ -149,6 +150,11 @@ def format_dataframe(df):
         tot_row[col] = df[col].sum() if col in df.columns else 0
 
     df_out = pd.concat([df, pd.DataFrame([tot_row])], ignore_index=True)
+
+    # Format angka menjadi "Rp 1.000.000" agar RATA KIRI
+    for col in ["k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13"]:
+        if col in df_out.columns:
+            df_out[col] = df_out[col].apply(lambda x: f"Rp {int(x):,}".replace(",", "."))
 
     df_out = df_out.rename(columns={
         "k3": "LUNAS ONLINE (KODE GERAK 22)",
@@ -166,42 +172,55 @@ def format_dataframe(df):
     return df_out
 
 
+# Fungsi Styling Warna Header Biru & Kontras Baris Total
+def apply_custom_table_style(df):
+    num_cols = [c for c in df.columns if c not in ["NO", "NAMA ULP"]]
+    
+    styler = df.style.set_table_styles([
+        {
+            'selector': 'th',
+            'props': [
+                ('background-color', '#1F4E79'),  # Header Biru Tua
+                ('color', '#FFFFFF'),              # Teks Putih
+                ('font-weight', 'bold'),
+                ('text-align', 'center'),
+                ('border', '1px solid #102A43')
+            ]
+        },
+        {
+            'selector': 'td',
+            'props': [
+                ('text-align', 'left'),            # Teks & Rp Rata Kiri
+                ('padding', '8px')
+            ]
+        }
+    ])
+
+    # Highlight baris Jumlah Total dengan Warna Kontras Biru Cerah/Kuning Emas
+    def highlight_total(row):
+        if row['NAMA ULP'] == 'JUMLAH TOTAL UP3 MEDAN UTARA':
+            return ['background-color: #2E5B88; color: #FFD700; font-weight: bold;'] * len(row)
+        return [''] * len(row)
+
+    styler = styler.apply(highlight_total, axis=1)
+    return styler
+
+
 # ----------------------------------------------------
 # TAMPILAN TABEL DASHBOARD STREAMLIT
 # ----------------------------------------------------
-df_tot_display = format_dataframe(df_tot)
-df_m_display = format_dataframe(df_m)
-df_ds_display = format_dataframe(df_ds)
-
-# Konfigurasi Tampilan Kolom Angka (Rp)
-column_config = {
-    col: st.column_config.NumberColumn(format="Rp %d") 
-    for col in df_tot_display.columns if col not in ["NO", "NAMA ULP"]
-}
+df_tot_display = format_dataframe_display(df_tot)
+df_m_display = format_dataframe_display(df_m)
+df_ds_display = format_dataframe_display(df_ds)
 
 st.subheader("🏢 TABEL 1. TOTAL KESELURUHAN (PEMDA MEDAN + DELI SERDANG)")
-st.dataframe(
-    df_tot_display, 
-    use_container_width=True, 
-    hide_index=True, 
-    column_config=column_config
-)
+st.dataframe(apply_custom_table_style(df_tot_display), use_container_width=True, hide_index=True)
 
 st.subheader("🏛️ TABEL 2. PEMDA KOTA MEDAN")
-st.dataframe(
-    df_m_display, 
-    use_container_width=True, 
-    hide_index=True, 
-    column_config=column_config
-)
+st.dataframe(apply_custom_table_style(df_m_display), use_container_width=True, hide_index=True)
 
 st.subheader("🌾 TABEL 3. PEMDA KABUPATEN DELI SERDANG")
-st.dataframe(
-    df_ds_display, 
-    use_container_width=True, 
-    hide_index=True, 
-    column_config=column_config
-)
+st.dataframe(apply_custom_table_style(df_ds_display), use_container_width=True, hide_index=True)
 
 
 # ----------------------------------------------------
@@ -251,13 +270,11 @@ def export_to_excel(df_total_disp, df_medan_disp, df_ds_disp):
         for row in ws.iter_rows(min_row=3, max_row=ws.max_row, min_col=1, max_col=len(headers)):
             for cell in row:
                 cell.border = thin_border
-                if isinstance(cell.value, (int, float)):
-                    cell.number_format = '#,##0'
 
         for col in ws.columns:
             max_len = max(len(str(cell.value or '')) for cell in col)
             col_letter = get_column_letter(col[0].column)
-            ws.column_dimensions[col_letter].width = max(max_len + 3, 12)
+            ws.column_dimensions[col_letter].width = max(max_len + 3, 14)
 
     wb.save(output)
     output.seek(0)
