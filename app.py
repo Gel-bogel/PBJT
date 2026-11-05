@@ -18,6 +18,14 @@ st.caption("Konsolidasi 5 ULP (Format Baru AP2T)")
 # ----------------------------------------------------
 
 def extract_ppj1_pemda_new(df1, kota):
+    """
+    Ekstraksi data Halaman 1 (PPJ 1) Format Baru AP2T.
+    Target Kolom PBJT:
+    - k3 (Lunas Online / DPH22)  : Indeks kolom 17
+    - k4 (Lunas Offline / DPH21) : Indeks kolom 13
+    - k5 (Beban Kantor / DPH24)  : Indeks kolom 25
+    - k6 (Lunas Terpusat / DPH25): Indeks kolom 29
+    """
     default_res = {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
     if df1 is None or df1.empty:
         return default_res
@@ -42,7 +50,21 @@ def extract_ppj1_pemda_new(df1, kota):
 
 
 def extract_ppj2_pemda_new(df2, kota):
-    default_res = {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0}
+    """
+    Ekstraksi data Halaman 2 (PPJ 2) Format Baru AP2T.
+    Target Kolom PBJT:
+    - k7  (Restitusi Taglis)          : Indeks kolom 12
+    - k8  (Non Taglis Online)         : Indeks kolom 24
+    - k10 (Non Taglis Offline / I-06) : Indeks kolom 28
+    - k11 (Nota Buku)                 : Indeks kolom 32
+    - k9  (Prabayar / Token)          : Indeks kolom 36
+    - k14 (Kompensasi TMP)            : Indeks kolom 40
+    - k15 (Kompensasi UJL)            : Indeks kolom 44
+    - k13 (Total Pelunasan)           : Indeks kolom 47
+    """
+    default_res = {
+        "k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0, "k14": 0, "k15": 0
+    }
     if df2 is None or df2.empty:
         return default_res
 
@@ -52,9 +74,13 @@ def extract_ppj2_pemda_new(df2, kota):
     if df_pemda.empty:
         return default_res
 
-    k7_val = pd.to_numeric(df_pemda.iloc[:, 12], errors='coerce').sum() if df2.shape[1] > 12 else 0
-    k8_val = pd.to_numeric(df_pemda.iloc[:, 24], errors='coerce').sum() if df2.shape[1] > 24 else 0
-    k9_val = pd.to_numeric(df_pemda.iloc[:, 36], errors='coerce').sum() if df2.shape[1] > 36 else 0
+    k7_val  = pd.to_numeric(df_pemda.iloc[:, 12], errors='coerce').sum() if df2.shape[1] > 12 else 0
+    k8_val  = pd.to_numeric(df_pemda.iloc[:, 24], errors='coerce').sum() if df2.shape[1] > 24 else 0
+    k10_val = pd.to_numeric(df_pemda.iloc[:, 28], errors='coerce').sum() if df2.shape[1] > 28 else 0
+    k11_val = pd.to_numeric(df_pemda.iloc[:, 32], errors='coerce').sum() if df2.shape[1] > 32 else 0
+    k9_val  = pd.to_numeric(df_pemda.iloc[:, 36], errors='coerce').sum() if df2.shape[1] > 36 else 0
+    k14_val = pd.to_numeric(df_pemda.iloc[:, 40], errors='coerce').sum() if df2.shape[1] > 40 else 0
+    k15_val = pd.to_numeric(df_pemda.iloc[:, 44], errors='coerce').sum() if df2.shape[1] > 44 else 0
 
     target_tot_idx = 47 if df2.shape[1] > 47 else df2.shape[1] - 1
     k13_val = pd.to_numeric(df_pemda.iloc[:, target_tot_idx], errors='coerce').sum()
@@ -63,10 +89,12 @@ def extract_ppj2_pemda_new(df2, kota):
         "k7": k7_val,
         "k8": k8_val,
         "k9": k9_val,
-        "k10": 0,
-        "k11": 0,
+        "k10": k10_val,
+        "k11": k11_val,
         "k12": 0,
-        "k13": k13_val
+        "k13": k13_val,
+        "k14": k14_val,
+        "k15": k15_val
     }
 
 
@@ -115,8 +143,8 @@ for idx, ulp in enumerate(list_ulp, 1):
     d1_m = extract_ppj1_pemda_new(df1, "KOTA MEDAN") if df1 is not None else {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
     d1_ds = extract_ppj1_pemda_new(df1, "DELI SERDANG") if df1 is not None else {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
 
-    d2_m = extract_ppj2_pemda_new(df2, "KOTA MEDAN") if df2 is not None else {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0}
-    d2_ds = extract_ppj2_pemda_new(df2, "DELI SERDANG") if df2 is not None else {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0}
+    d2_m = extract_ppj2_pemda_new(df2, "KOTA MEDAN") if df2 is not None else {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0, "k14": 0, "k15": 0}
+    d2_ds = extract_ppj2_pemda_new(df2, "DELI SERDANG") if df2 is not None else {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0, "k14": 0, "k15": 0}
 
     row_m.update(d1_m)
     row_m.update(d2_m)
@@ -125,7 +153,7 @@ for idx, ulp in enumerate(list_ulp, 1):
     row_ds.update(d2_ds)
 
     row_tot = {"NO": idx, "NAMA ULP": ulp}
-    for key in ["k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13"]:
+    for key in ["k3", "k4", "k5", "k6", "k7", "k8", "k9", "k10", "k11", "k12", "k13", "k14", "k15"]:
         row_tot[key] = row_m.get(key, 0) + row_ds.get(key, 0)
 
     data_total.append(row_tot)
@@ -138,7 +166,7 @@ df_ds = pd.DataFrame(data_deliserdang)
 
 
 # ----------------------------------------------------
-# FUNGSI RENDER TABEL HTML ASLI (PERSIS SEPERTI GAMBAR)
+# FUNGSI RENDER TABEL HTML LENGKAP KUSTOM
 # ----------------------------------------------------
 def render_custom_html_table(df):
     if df.empty:
@@ -153,13 +181,16 @@ def render_custom_html_table(df):
         ("6", "LUNAS TERPUSAT (KODE GERAK 25)"),
         ("7", "RESTITUSI"),
         ("8", "NON TAGLIS ONLINE"),
-        ("9", "PRABAYAR"),
-        ("10", "TOTAL PELUNASAN")
+        ("9", "NON TAGLIS OFFLINE"),
+        ("10", "NOTA BUKU"),
+        ("11", "PRABAYAR"),
+        ("12", "KOMPENSASI TMP"),
+        ("13", "KOMPENSASI UJL"),
+        ("14", "TOTAL PELUNASAN")
     ]
 
-    keys = ["k3", "k4", "k5", "k6", "k7", "k8", "k9", "k13"]
+    keys = ["k3", "k4", "k5", "k6", "k7", "k8", "k10", "k11", "k9", "k14", "k15", "k13"]
 
-    # Inisialisasi HTML dengan CSS Kustom
     html = """
     <style>
         .custom-table-container {
@@ -182,15 +213,18 @@ def render_custom_html_table(df):
             padding: 8px 5px;
             text-align: center;
             font-weight: bold;
+            white-space: nowrap;
         }
         .custom-table td {
             border: 1px solid #B0C4DE;
             padding: 6px 8px;
             vertical-align: middle;
+            white-space: nowrap;
         }
         .num-col {
             display: flex;
             justify-content: space-between;
+            min-width: 110px;
         }
         .total-row {
             background-color: #62B8DF !important;
@@ -203,7 +237,7 @@ def render_custom_html_table(df):
             <tr>
     """
 
-    # Baris Nomor Kolom (1, 2, 3, 4, dst.)
+    # Baris Nomor Kolom (1, 2, 3, dst.)
     for num, _ in headers:
         html += f"<th>{num}</th>"
     html += "</tr><tr>"
@@ -263,9 +297,15 @@ def export_to_excel(df_tot, df_m, df_ds):
 
     sheets = [(ws1, df_tot), (ws2, df_m), (ws3, df_ds)]
 
+    headers = [
+        "NO", "NAMA ULP", "LUNAS ONLINE", "LUNAS OFFLINE", "BEBAN KANTOR", 
+        "LUNAS TERPUSAT", "RESTITUSI", "NON TAGLIS ONLINE", "NON TAGLIS OFFLINE", 
+        "NOTA BUKU", "PRABAYAR", "KOMPENSASI TMP", "KOMPENSASI UJL", "TOTAL PELUNASAN"
+    ]
+    keys = ["k3", "k4", "k5", "k6", "k7", "k8", "k10", "k11", "k9", "k14", "k15", "k13"]
+
     for ws, df_curr in sheets:
-        ws.append(["NO", "NAMA ULP", "LUNAS ONLINE", "LUNAS OFFLINE", "BEBAN KANTOR", "LUNAS TERPUSAT", "RESTITUSI", "NON TAGLIS ONLINE", "PRABAYAR", "TOTAL PELUNASAN"])
-        keys = ["k3", "k4", "k5", "k6", "k7", "k8", "k9", "k13"]
+        ws.append(headers)
         
         for _, r in df_curr.iterrows():
             ws.append([r["NO"], r["NAMA ULP"]] + [r.get(k, 0) for k in keys])
@@ -273,7 +313,7 @@ def export_to_excel(df_tot, df_m, df_ds):
         tot_row = ["", "JUMLAH TOTAL UP3 MEDAN UTARA"] + [df_curr[k].sum() for k in keys]
         ws.append(tot_row)
 
-        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=3, max_col=10):
+        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=3, max_col=len(headers)):
             for cell in row:
                 if isinstance(cell.value, (int, float)):
                     cell.number_format = '#,##0'
