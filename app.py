@@ -166,7 +166,7 @@ df_ds = pd.DataFrame(data_deliserdang)
 
 
 # ----------------------------------------------------
-# FUNGSI RENDER TABEL HTML LENGKAP KUSTOM
+# FUNGSI RENDER TABEL HTML DENGAN UKURAN KOLOM SAMA RATA
 # ----------------------------------------------------
 def render_custom_html_table(df):
     if df.empty:
@@ -191,6 +191,7 @@ def render_custom_html_table(df):
 
     keys = ["k3", "k4", "k5", "k6", "k7", "k8", "k10", "k11", "k9", "k14", "k15", "k13"]
 
+    # Aturan CSS table-layout: fixed agar ukuran kolom sama rata besarnya
     html = """
     <style>
         .custom-table-container {
@@ -200,9 +201,10 @@ def render_custom_html_table(df):
         }
         .custom-table {
             width: 100%;
+            table-layout: fixed; /* Memaksa semua kolom berukuran sama rata */
             border-collapse: collapse;
             font-family: sans-serif;
-            font-size: 13px;
+            font-size: 12px;
             background-color: #FFFFFF;
             color: #000000;
         }
@@ -210,21 +212,22 @@ def render_custom_html_table(df):
             background-color: #9CD2EC;
             color: #000000;
             border: 1px solid #73A9C2;
-            padding: 8px 5px;
+            padding: 8px 4px;
             text-align: center;
             font-weight: bold;
-            white-space: nowrap;
+            word-wrap: break-word;
+            word-break: break-word;
         }
         .custom-table td {
             border: 1px solid #B0C4DE;
-            padding: 6px 8px;
+            padding: 6px 6px;
             vertical-align: middle;
-            white-space: nowrap;
+            word-wrap: break-word;
+            word-break: break-word;
         }
         .num-col {
             display: flex;
             justify-content: space-between;
-            min-width: 110px;
         }
         .total-row {
             background-color: #62B8DF !important;
@@ -304,19 +307,39 @@ def export_to_excel(df_tot, df_m, df_ds):
     ]
     keys = ["k3", "k4", "k5", "k6", "k7", "k8", "k10", "k11", "k9", "k14", "k15", "k13"]
 
+    header_fill = PatternFill(start_color="9CD2EC", end_color="9CD2EC", fill_type="solid")
+    header_font = Font(name="Calibri", size=11, bold=True, color="000000")
+    thin_border = Border(
+        left=Side(style='thin', color='000000'),
+        right=Side(style='thin', color='000000'),
+        top=Side(style='thin', color='000000'),
+        bottom=Side(style='thin', color='000000')
+    )
+
     for ws, df_curr in sheets:
         ws.append(headers)
         
+        # Format Header
+        for col_num in range(1, len(headers) + 1):
+            cell = ws.cell(row=1, column=col_num)
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+
         for _, r in df_curr.iterrows():
             ws.append([r["NO"], r["NAMA ULP"]] + [r.get(k, 0) for k in keys])
             
         tot_row = ["", "JUMLAH TOTAL UP3 MEDAN UTARA"] + [df_curr[k].sum() for k in keys]
         ws.append(tot_row)
 
-        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=3, max_col=len(headers)):
+        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=len(headers)):
             for cell in row:
+                cell.border = thin_border
                 if isinstance(cell.value, (int, float)):
                     cell.number_format = '#,##0'
+
+        for col in ws.columns:
+            ws.column_dimensions[get_column_letter(col[0].column)].width = 18
 
     wb.save(output)
     output.seek(0)
