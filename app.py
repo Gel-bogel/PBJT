@@ -83,65 +83,49 @@ def get_exact_ulp_name(df):
                     return "ULP " + parts[1].split()[0]
     return "ULP LAINNYA"
 
-def extract_ppj1_pemda_new(df, pemda_name):
-    """Ekstraksi PBJT-TL Kode Gerak Format Baru (Halaman 1)"""
-    mask = (df.iloc[:, 2].astype(str).str.strip().str.upper() == pemda_name.upper()) & \
-           (df.iloc[:, 5].astype(str).str.strip().str.upper().str.startswith("JUMLAH"))
-    df_sub = df[mask]
+def extract_ppj1_pemda(df1, kota):
+    if df1 is None or df1.empty:
+        return {"lunas_online": 0, "lunas_offline": 0, "beban_kantor": 0, "lunas_terpusat": 0}
     
-    if df_sub.empty:
-        mask = (df.iloc[:, 2].astype(str).str.strip().str.upper() == pemda_name.upper()) & \
-               (pd.to_numeric(df.iloc[:, 31], errors='coerce').notnull())
-        df_sub = df[mask]
-
-    # Berdasarkan struktur format baru Halaman 1:
-    # Kolom PBJT-TL/PPJ per Kode Gerak
-    k4 = pd.to_numeric(df_sub.iloc[:, 14], errors='coerce').sum()  # Kode Gerak 21 (Lunas Offline)
-    k3 = pd.to_numeric(df_sub.iloc[:, 18], errors='coerce').sum()  # Kode Gerak 22 (Lunas Online)
-    # Kode Gerak 23 diabaikan
-    k5 = pd.to_numeric(df_sub.iloc[:, 26], errors='coerce').sum()  # Kode Gerak 24 (Beban Kantor)
-    k6 = pd.to_numeric(df_sub.iloc[:, 30], errors='coerce').sum()  # Kode Gerak 25 (Lunas Terpusat)
-
-    return {"k3": k3, "k4": k4, "k5": k5, "k6": k6}
-
-def extract_ppj2_pemda_new(df2, kota):
-    """
-    Fungsi ekstraksi data Halaman 2 (PPJ 2) untuk format baru AP2T.
-    Target total pelunasan PBJT-TL / PPJ berada di indeks kolom 47.
-    """
-    if df2 is None or df2.empty:
-        return {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0}
-    
-    # Menentukan indeks kolom total pelunasan
-    # Pada format baru, total pelunasan berada di indeks 47
-    target_col_idx = 47 if df2.shape[1] > 47 else df2.shape[1] - 1
-    
-    # Mencari baris data yang valid berdasarkan kolom total pelunasan
-    s = pd.to_numeric(df2.iloc[:, target_col_idx], errors='coerce').notnull()
-    df_clean = df2[s].copy()
-    
-    if df_clean.empty:
-        return {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0}
-    
-    # Filter berdasarkan nama Pemda/Kota pada kolom indeks 1
-    mask_pemda = df_clean.iloc[:, 1].astype(str).str.contains(kota, case=False, na=False)
-    df_pemda = df_clean[mask_pemda]
+    # Filter baris yang valid (berdasarkan KODE_PEMDA / PEMDA di kolom 1)
+    mask = df1.iloc[:, 1].astype(str).str.contains(kota, case=False, na=False)
+    df_pemda = df1[mask]
     
     if df_pemda.empty:
-        return {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0}
+        return {"lunas_online": 0, "lunas_offline": 0, "beban_kantor": 0, "lunas_terpusat": 0}
     
-    # Ambil nilai total pelunasan dari kolom indeks 47
-    total_val = pd.to_numeric(df_pemda.iloc[:, target_col_idx], errors='coerce').sum()
+    # Ambil nilai PBJT berdasarkan indeks kolom Halaman 1 yang benar:
+    lunas_offline = pd.to_numeric(df_pemda.iloc[:, 13], errors='coerce').sum() # Gerak 21
+    lunas_online  = pd.to_numeric(df_pemda.iloc[:, 17], errors='coerce').sum() # Gerak 22
+    beban_kantor  = pd.to_numeric(df_pemda.iloc[:, 25], errors='coerce').sum() # Gerak 24
+    lunas_terpusat= pd.to_numeric(df_pemda.iloc[:, 29], errors='coerce').sum() # Gerak 25
     
-    # Sesuaikan pemetaan return variabel sesuai kebutuhan analisis Anda
     return {
-        "k7": total_val,
-        "k8": 0,
-        "k9": 0,
-        "k10": 0,
-        "k11": 0,
-        "k12": 0,
-        "k13": 0
+        "lunas_online": lunas_online,
+        "lunas_offline": lunas_offline,
+        "beban_kantor": beban_kantor,
+        "lunas_terpusat": lunas_terpusat
+    }
+
+def extract_ppj2_pemda(df2, kota):
+    if df2 is None or df2.empty:
+        return {"restitusi": 0, "prabayar": 0, "total": 0}
+    
+    mask = df2.iloc[:, 1].astype(str).str.contains(kota, case=False, na=False)
+    df_pemda = df2[mask]
+    
+    if df_pemda.empty:
+        return {"restitusi": 0, "prabayar": 0, "total": 0}
+    
+    # Ambil nilai berdasarkan indeks kolom Halaman 2 format baru:
+    restitusi = pd.to_numeric(df_pemda.iloc[:, 12], errors='coerce').sum() # Restitusi Taglis
+    prabayar  = pd.to_numeric(df_pemda.iloc[:, 36], errors='coerce').sum() # Prabayar Token
+    total     = pd.to_numeric(df_pemda.iloc[:, 47], errors='coerce').sum() # Total Akhir
+    
+    return {
+        "restitusi": restitusi,
+        "prabayar": prabayar,
+        "total": total
     }
 
 # Mapping berkas berdasarkan ULP
