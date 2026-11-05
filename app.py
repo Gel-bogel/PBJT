@@ -6,7 +6,7 @@ from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-# Konfigurasi Halaman Streamlit
+# Konfigurasi Halaman Streamlit (Lebar Maksimal / Wide Layout)
 st.set_page_config(page_title="Laporan Realisasi PPJ / PBJT-TL", layout="wide")
 
 st.title("⚡ Laporan Realisasi Hasil Pemungutan PPJ / PBJT-TL")
@@ -166,7 +166,7 @@ df_ds = pd.DataFrame(data_deliserdang)
 
 
 # ----------------------------------------------------
-# FUNGSI RENDER TABEL HTML DENGAN UKURAN KOLOM SAMA RATA
+# FUNGSI RENDER TABEL HTML DENGAN LEBAR BESAR KE SAMPING
 # ----------------------------------------------------
 def render_custom_html_table(df):
     if df.empty:
@@ -191,7 +191,7 @@ def render_custom_html_table(df):
 
     keys = ["k3", "k4", "k5", "k6", "k7", "k8", "k10", "k11", "k9", "k14", "k15", "k13"]
 
-    # Aturan CSS table-layout: fixed agar ukuran kolom sama rata besarnya
+    # CSS Khusus: min-width 1700px dan table-layout: fixed agar tabel berukuran besar & rata ke samping
     html = """
     <style>
         .custom-table-container {
@@ -201,18 +201,23 @@ def render_custom_html_table(df):
         }
         .custom-table {
             width: 100%;
-            table-layout: fixed; /* Memaksa semua kolom berukuran sama rata */
+            min-width: 1700px; /* Lebar minimum besar ke samping agar tidak sempit */
+            table-layout: fixed;
             border-collapse: collapse;
             font-family: sans-serif;
-            font-size: 12px;
+            font-size: 13px;
             background-color: #FFFFFF;
             color: #000000;
         }
+        .custom-table col.col-no { width: 3.5%; }
+        .custom-table col.col-ulp { width: 10.5%; }
+        .custom-table col.col-data { width: 7.3%; }
+        
         .custom-table th {
             background-color: #9CD2EC;
             color: #000000;
             border: 1px solid #73A9C2;
-            padding: 8px 4px;
+            padding: 10px 4px;
             text-align: center;
             font-weight: bold;
             word-wrap: break-word;
@@ -220,7 +225,7 @@ def render_custom_html_table(df):
         }
         .custom-table td {
             border: 1px solid #B0C4DE;
-            padding: 6px 6px;
+            padding: 8px 6px;
             vertical-align: middle;
             word-wrap: break-word;
             word-break: break-word;
@@ -236,6 +241,11 @@ def render_custom_html_table(df):
     </style>
     <div class="custom-table-container">
     <table class="custom-table">
+        <colgroup>
+            <col class="col-no">
+            <col class="col-ulp">
+            <col class="col-data" span="12">
+        </colgroup>
         <thead>
             <tr>
     """
@@ -319,7 +329,6 @@ def export_to_excel(df_tot, df_m, df_ds):
     for ws, df_curr in sheets:
         ws.append(headers)
         
-        # Format Header
         for col_num in range(1, len(headers) + 1):
             cell = ws.cell(row=1, column=col_num)
             cell.fill = header_fill
