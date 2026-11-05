@@ -83,49 +83,74 @@ def get_exact_ulp_name(df):
                     return "ULP " + parts[1].split()[0]
     return "ULP LAINNYA"
 
-def extract_ppj1_pemda(df1, kota):
+def extract_ppj1_pemda_new(df1, kota):
+    """
+    Ekstraksi data Halaman 1 (PPJ 1) untuk Format Baru AP2T.
+    Mengambil:
+    - k3 (Lunas Online / DPH22): Indeks kolom 17
+    - k4 (Lunas Offline / DPH21): Indeks kolom 13
+    - k5 (Beban Kantor / DPH24): Indeks kolom 25
+    - k6 (Lunas Terpusat / DPH25): Indeks kolom 29
+    """
+    default_res = {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
     if df1 is None or df1.empty:
-        return {"lunas_online": 0, "lunas_offline": 0, "beban_kantor": 0, "lunas_terpusat": 0}
+        return default_res
     
-    # Filter baris yang valid (berdasarkan KODE_PEMDA / PEMDA di kolom 1)
+    # Filter berdasarkan nama Pemda/Kota di kolom indeks 1
     mask = df1.iloc[:, 1].astype(str).str.contains(kota, case=False, na=False)
     df_pemda = df1[mask]
     
     if df_pemda.empty:
-        return {"lunas_online": 0, "lunas_offline": 0, "beban_kantor": 0, "lunas_terpusat": 0}
+        return default_res
     
-    # Ambil nilai PBJT berdasarkan indeks kolom Halaman 1 yang benar:
-    lunas_offline = pd.to_numeric(df_pemda.iloc[:, 13], errors='coerce').sum() # Gerak 21
-    lunas_online  = pd.to_numeric(df_pemda.iloc[:, 17], errors='coerce').sum() # Gerak 22
-    beban_kantor  = pd.to_numeric(df_pemda.iloc[:, 25], errors='coerce').sum() # Gerak 24
-    lunas_terpusat= pd.to_numeric(df_pemda.iloc[:, 29], errors='coerce').sum() # Gerak 25
+    # Ambil nilai angka PBJT dari masing-masing kolom
+    k4_val = pd.to_numeric(df_pemda.iloc[:, 13], errors='coerce').sum() if df1.shape[1] > 13 else 0
+    k3_val = pd.to_numeric(df_pemda.iloc[:, 17], errors='coerce').sum() if df1.shape[1] > 17 else 0
+    k5_val = pd.to_numeric(df_pemda.iloc[:, 25], errors='coerce').sum() if df1.shape[1] > 25 else 0
+    k6_val = pd.to_numeric(df_pemda.iloc[:, 29], errors='coerce').sum() if df1.shape[1] > 29 else 0
     
     return {
-        "lunas_online": lunas_online,
-        "lunas_offline": lunas_offline,
-        "beban_kantor": beban_kantor,
-        "lunas_terpusat": lunas_terpusat
+        "k3": k3_val,
+        "k4": k4_val,
+        "k5": k5_val,
+        "k6": k6_val
     }
 
-def extract_ppj2_pemda(df2, kota):
+
+def extract_ppj2_pemda_new(df2, kota):
+    """
+    Ekstraksi data Halaman 2 (PPJ 2) untuk Format Baru AP2T.
+    Mengambil:
+    - k7 (Restitusi Taglis): Indeks kolom 12
+    - k8 (Non Taglis Online): Indeks kolom 24
+    - k9 (Prabayar / Token): Indeks kolom 36
+    - k13 (Total Pelunasan): Indeks kolom 47
+    """
+    default_res = {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0}
     if df2 is None or df2.empty:
-        return {"restitusi": 0, "prabayar": 0, "total": 0}
+        return default_res
     
     mask = df2.iloc[:, 1].astype(str).str.contains(kota, case=False, na=False)
     df_pemda = df2[mask]
     
     if df_pemda.empty:
-        return {"restitusi": 0, "prabayar": 0, "total": 0}
+        return default_res
     
-    # Ambil nilai berdasarkan indeks kolom Halaman 2 format baru:
-    restitusi = pd.to_numeric(df_pemda.iloc[:, 12], errors='coerce').sum() # Restitusi Taglis
-    prabayar  = pd.to_numeric(df_pemda.iloc[:, 36], errors='coerce').sum() # Prabayar Token
-    total     = pd.to_numeric(df_pemda.iloc[:, 47], errors='coerce').sum() # Total Akhir
+    k7_val  = pd.to_numeric(df_pemda.iloc[:, 12], errors='coerce').sum() if df2.shape[1] > 12 else 0
+    k8_val  = pd.to_numeric(df_pemda.iloc[:, 24], errors='coerce').sum() if df2.shape[1] > 24 else 0
+    k9_val  = pd.to_numeric(df_pemda.iloc[:, 36], errors='coerce').sum() if df2.shape[1] > 36 else 0
+    
+    target_tot_idx = 47 if df2.shape[1] > 47 else df2.shape[1] - 1
+    k13_val = pd.to_numeric(df_pemda.iloc[:, target_tot_idx], errors='coerce').sum()
     
     return {
-        "restitusi": restitusi,
-        "prabayar": prabayar,
-        "total": total
+        "k7": k7_val,
+        "k8": k8_val,
+        "k9": k9_val,
+        "k10": 0,
+        "k11": 0,
+        "k12": 0,
+        "k13": k13_val
     }
 
 # Mapping berkas berdasarkan ULP
@@ -161,8 +186,8 @@ if dict_ppj1 and dict_ppj2:
         row_m.update(d2_m)
         rows_medan.append(row_m)
 
-        d1_ds = extract_ppj1_pemda_new(df1, "KAB. DELI SERDANG") if df1 is not None else {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
-        d2_ds = extract_ppj2_pemda_new(df2, "KAB. DELI SERDANG") if df2 is not None else {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0}
+        d1_d = extract_ppj1_pemda_new(df1, "DELI SERDANG") if df1 is not None else {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
+        d2_d = extract_ppj2_pemda_new(df2, "DELI SERDANG") if df2 is not None else {"k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0}
         row_ds = {"ULP": ulp}
         row_ds.update(d1_ds)
         row_ds.update(d2_ds)
