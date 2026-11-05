@@ -6,7 +6,7 @@ from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-# Konfigurasi Halaman Streamlit (Lebar Maksimal / Wide Layout)
+# Konfigurasi Halaman Streamlit (Layout Wide)
 st.set_page_config(page_title="Laporan Realisasi PPJ / PBJT-TL", layout="wide")
 
 st.title("⚡ Laporan Realisasi Hasil Pemungutan PPJ / PBJT-TL")
@@ -19,12 +19,11 @@ st.caption("Konsolidasi 5 ULP (Format Baru AP2T)")
 
 def extract_ppj1_pemda_new(df1, kota):
     """
-    Ekstraksi data Halaman 1 (PPJ 1) Format Baru AP2T.
-    Target Kolom PBJT:
-    - k3 (Lunas Online / DPH22)  : Indeks kolom 17
-    - k4 (Lunas Offline / DPH21) : Indeks kolom 13
-    - k5 (Beban Kantor / DPH24)  : Indeks kolom 25
-    - k6 (Lunas Terpusat / DPH25): Indeks kolom 29
+    Ekstraksi Halaman 1 (PPJ 1) - Kolom Berwarna Kuning:
+    - k3 (Lunas Online / DPH22)  : Indeks kolom 17 (R)
+    - k4 (Lunas Offline / DPH21) : Indeks kolom 13 (N)
+    - k5 (Beban Kantor / DPH24)  : Indeks kolom 25 (Z)
+    - k6 (Lunas Terpusat / DPH25): Indeks kolom 29 (AD)
     """
     default_res = {"k3": 0, "k4": 0, "k5": 0, "k6": 0}
     if df1 is None or df1.empty:
@@ -51,16 +50,19 @@ def extract_ppj1_pemda_new(df1, kota):
 
 def extract_ppj2_pemda_new(df2, kota):
     """
-    Ekstraksi data Halaman 2 (PPJ 2) Format Baru AP2T.
-    Target Kolom PBJT:
-    - k7  (Restitusi Taglis)          : Indeks kolom 12
-    - k8  (Non Taglis Online)         : Indeks kolom 24
-    - k10 (Non Taglis Offline / I-06) : Indeks kolom 28
-    - k11 (Nota Buku)                 : Indeks kolom 32
-    - k9  (Prabayar / Token)          : Indeks kolom 36
-    - k14 (Kompensasi TMP)            : Indeks kolom 40
-    - k15 (Kompensasi UJL)            : Indeks kolom 44
-    - k13 (Total Pelunasan)           : Indeks kolom 47
+    Ekstraksi Halaman 2 (PPJ 2):
+    - k7 (RESTITUSI - HASIL PENJUMLAHAN 3 KOLOM ORANYE):
+        * Restitusi Taglis    : Indeks kolom 12 (M)
+        * Restitusi Non Taglis: Indeks kolom 16 (Q)
+        * Restitusi Prabayar  : Indeks kolom 20 (U)
+    - Kolom Kuning Lainnya:
+        * k8  (Non Taglis Online)        : Indeks kolom 24 (Y)
+        * k10 (Non Taglis Offline / I-06): Indeks kolom 28 (AC)
+        * k11 (Nota Buku)                : Indeks kolom 32 (AG)
+        * k9  (Prabayar / Token)         : Indeks kolom 36 (AK)
+        * k14 (Kompensasi TMP)           : Indeks kolom 40 (AO)
+        * k15 (Kompensasi UJL)           : Indeks kolom 44 (AS)
+        * k13 (Total Pelunasan)          : Indeks kolom 47 (AV)
     """
     default_res = {
         "k7": 0, "k8": 0, "k9": 0, "k10": 0, "k11": 0, "k12": 0, "k13": 0, "k14": 0, "k15": 0
@@ -74,7 +76,14 @@ def extract_ppj2_pemda_new(df2, kota):
     if df_pemda.empty:
         return default_res
 
-    k7_val  = pd.to_numeric(df_pemda.iloc[:, 12], errors='coerce').sum() if df2.shape[1] > 12 else 0
+    # 1. PENJUMLAHAN 3 KOLOM ORANYE UNTUK RESTITUSI (k7)
+    res_taglis    = pd.to_numeric(df_pemda.iloc[:, 12], errors='coerce').sum() if df2.shape[1] > 12 else 0
+    res_nontaglis = pd.to_numeric(df_pemda.iloc[:, 16], errors='coerce').sum() if df2.shape[1] > 16 else 0
+    res_prabayar  = pd.to_numeric(df_pemda.iloc[:, 20], errors='coerce').sum() if df2.shape[1] > 20 else 0
+    
+    total_restitusi = res_taglis + res_nontaglis + res_prabayar
+
+    # 2. EKSTRAKSI KOLOM KUNING LAINNYA
     k8_val  = pd.to_numeric(df_pemda.iloc[:, 24], errors='coerce').sum() if df2.shape[1] > 24 else 0
     k10_val = pd.to_numeric(df_pemda.iloc[:, 28], errors='coerce').sum() if df2.shape[1] > 28 else 0
     k11_val = pd.to_numeric(df_pemda.iloc[:, 32], errors='coerce').sum() if df2.shape[1] > 32 else 0
@@ -86,7 +95,7 @@ def extract_ppj2_pemda_new(df2, kota):
     k13_val = pd.to_numeric(df_pemda.iloc[:, target_tot_idx], errors='coerce').sum()
 
     return {
-        "k7": k7_val,
+        "k7": total_restitusi,
         "k8": k8_val,
         "k9": k9_val,
         "k10": k10_val,
@@ -166,7 +175,7 @@ df_ds = pd.DataFrame(data_deliserdang)
 
 
 # ----------------------------------------------------
-# FUNGSI RENDER TABEL HTML DENGAN LEBAR BESAR KE SAMPING
+# FUNGSI RENDER TABEL HTML DENGAN UKURAN PROPORSIONAL
 # ----------------------------------------------------
 def render_custom_html_table(df):
     if df.empty:
@@ -191,7 +200,6 @@ def render_custom_html_table(df):
 
     keys = ["k3", "k4", "k5", "k6", "k7", "k8", "k10", "k11", "k9", "k14", "k15", "k13"]
 
-    # CSS Khusus: min-width 1700px dan table-layout: fixed agar tabel berukuran besar & rata ke samping
     html = """
     <style>
         .custom-table-container {
@@ -201,7 +209,7 @@ def render_custom_html_table(df):
         }
         .custom-table {
             width: 100%;
-            min-width: 1700px; /* Lebar minimum besar ke samping agar tidak sempit */
+            min-width: 1700px;
             table-layout: fixed;
             border-collapse: collapse;
             font-family: sans-serif;
@@ -250,17 +258,14 @@ def render_custom_html_table(df):
             <tr>
     """
 
-    # Baris Nomor Kolom (1, 2, 3, dst.)
     for num, _ in headers:
         html += f"<th>{num}</th>"
     html += "</tr><tr>"
 
-    # Baris Nama Header
     for _, title in headers:
         html += f"<th>{title}</th>"
     html += "</tr></thead><tbody>"
 
-    # Isian Data Baris ULP
     totals = {k: df[k].sum() for k in keys if k in df.columns}
 
     for _, row in df.iterrows():
@@ -271,7 +276,6 @@ def render_custom_html_table(df):
             html += f"<td><div class='num-col'><span>Rp</span><span>{formatted_val}</span></div></td>"
         html += "</tr>"
 
-    # Baris Jumlah Total UP3 Medan Utara
     html += f"<tr class='total-row'><td style='text-align:center;'></td><td>JUMLAH TOTAL UP3 MEDAN UTARA</td>"
     for k in keys:
         tot_val = totals.get(k, 0)
